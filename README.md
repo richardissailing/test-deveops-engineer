@@ -1,138 +1,269 @@
-# DevOps Take-Home Test
+# DevOps Implementation Project
 
-## Overview
+A comprehensive DevOps setup for a Node.js application featuring blue/green deployment, monitoring, tracing, and log aggregation.
 
-The goal of this test is to assess your skills in DevOps practices, including CI/CD, observability, and infrastructure management.
-You will work with an existing Node.js application to demonstrate your technical abilities and decision-making process.
+## Features
 
-- **Timebox:** The test is designed to be completed in 6 hours or less.
-- **Commit Often:** Show your working process through regular commits.
-- **External Dependencies:** Use any external tools or libraries you see fit.
-- **Keep It Practical:** Avoid over-engineering the solution and focus on meeting the requirements.
+### Core Infrastructure
+- Blue/Green Deployment Strategy
+- Nginx Load Balancer
+- Docker Containerization
+- Automated Testing and CI/CD
 
-## Objectives
+### Monitoring Stack
+- Prometheus metrics collection
+- Grafana dashboards
+- Jaeger distributed tracing
+- Loki log aggregation
+- Health check monitoring
 
-1. **CI/CD Pipeline**: Create a CI/CD pipeline for a Node.js application.
-2. **Observability**: Implement basic observability for the application.
-3. **Infrastructure Setup**: Containerize and deploy the application.
+## Quick Start
 
----
+### Prerequisites
+- Docker and Docker Compose
+- Node.js (for local development)
+- Git
 
-## Requirements
+### Docker Configuration
+Before starting, ensure Docker is properly configured:
 
-### Functional
+1. Configure Docker DNS:
+```json
+{
+    "dns": ["8.8.8.8", "8.8.4.4"],
+    "dns-opts": ["ndots:1"],
+    "mtu": 1500,
+    "ipv6": false
+}
+```
 
-1. **CI/CD Pipeline**
-    - Automate the build, test, and deployment processes.
-    - Ensure the pipeline triggers on commits and pull requests.
-    - Roll back deployments on failure.
-    - (Optional) Use advanced deployment strategies, such as blue/green or canary deployments.
-    - **Deliverables**:
-        - A CI/CD pipeline configuration (e.g., `.github/workflows/main.yml`).
-        - Evidence of successful pipeline runs (e.g., screenshots, build logs, GitHub Actions).
+2. Apply configuration:
+```bash
+sudo systemctl restart docker
+```
 
-2. **Observability**
-    - Integrate a monitoring solution (e.g., Prometheus) to collect application metrics.
-    - Create or import a visualization dashboard using Grafana.
-    - (Optional) Add alerting rules based on application performance or errors.
-    - **Deliverables**:
-        - Prometheus configuration files (e.g., `prometheus.yml`).
-        - Grafana dashboard JSON file or screenshots.
+### Project Structure
+```
+.
+├── .github/
+│   └── workflows/          # CI/CD pipeline configurations
+├── grafana/
+│   ├── dashboards/        # Grafana dashboard definitions
+│   └── provisioning/      # Grafana configuration
+│       └── datasources/   # Datasource configurations
+├── loki/                  # Loki configuration
+├── nginx/
+│   └── nginx.conf         # Load balancer configuration
+├── prometheus/
+│   └── prometheus.yml     # Prometheus configuration
+├── src/                   # Application source code
+├── promtail/              # Loki configuration
+├── docker-compose.blue-green.yml
+└── Dockerfile
+```
 
-3. **Infrastructure Setup**
-    - Containerize the application using Docker.
-    - Deploy the application to an environment of your choice:
-        - Local environment using Docker Compose.
-        - Cloud environment (e.g., AWS, GCP, or any platform of your choosing).
-    - (Optional) Implement orchestration using Kubernetes or similar tools.
-    - **Deliverables**:
-        - A functional `Dockerfile`.
-        - Deployment instructions or scripts (e.g., `docker-compose.yml`).
-        - Evidence of successful deployment (e.g., screenshots, URLs, GitHub Actions logs).
+### Getting Started
 
----
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd <repository-name>
+```
 
-## Technical
+2. Start the services in order:
+```bash
+# Start core services
+docker-compose -f docker-compose.blue-green.yml up -d nginx prometheus grafana
 
-- **CI/CD Tool**: Use GitHub Actions, so this can be easily reviewed.
-- **Monitoring**: Use Prometheus and Grafana (or alternatives).
-- **Containerization**: Create a functional `Dockerfile`.
-- **Documentation**: Provide clear instructions for setting up and running the application.
+# Start applications
+docker-compose -f docker-compose.blue-green.yml up -d app-blue app-green
 
----
+# Start monitoring services
+docker-compose -f docker-compose.blue-green.yml up -d jaeger loki
+```
 
-## Getting Started
+### Service Endpoints
+- Blue Deployment: http://localhost:3002
+- Green Deployment: http://localhost:3003
+- Load Balancer: http://localhost:80
+- Grafana: http://localhost:3001 (admin/admin)
+- Prometheus: http://localhost:9090
+- Jaeger UI: http://localhost:16686
+- Loki: http://localhost:3100
 
-1. **Use an Example Application**
-    - [Express.js Example App](https://github.com/expressjs/express/tree/master/examples) or one of your choice.
+## Deployment
 
-2. **Set Up CI/CD**
-    - Create a GitHub Action workflow for the CI/CD pipeline.
+### Blue/Green Deployment
 
-3. **Set Up Monitoring**
-    - Configure application to export Prometheus metrics.
-    - Configure Prometheus to scrape application metrics.
-    - Create or import a Grafana dashboard for visualization.
+Switch between deployments:
+```bash
+./scripts/switch-deployment.sh blue  # Switch to blue deployment
+./scripts/switch-deployment.sh green # Switch to green deployment
+```
 
-4. **Deploy the Application**
-    - Containerize the application using Docker.
-    - Deploy locally or to a cloud environment.
+Test deployments:
+```bash
+./scripts/test-deployment.sh
+```
 
----
+### Monitoring
 
-## Submission Guidelines
+#### Metrics
+Access application metrics at `/metrics` endpoint in Prometheus format:
+- HTTP request duration
+- Request counts by endpoint
+- Error rates
+- Node.js runtime metrics
 
-- **Repository**
-    - Fork this repository to start your work.
-    - Push your code to the fork.
-    - Ensure the repository has a clear commit history, and commit regularly.
+#### Tracing
+Distributed tracing with Jaeger:
+- Request tracing across services
+- Performance bottleneck identification
+- Error tracking
 
-- **README File**
-    - Include instructions on how to run your application and observability setup.
-    - Describe your thought process and any architectural decisions.
-    - Mention any trade-offs or assumptions made during development.
+#### Logging
+Log aggregation with Loki:
+- Centralized logging
+- Structured log format
+- Real-time log tailing
 
-- **Submission**
-    - Email us the link to your GitHub repository at [sam.thompson@playa3ull.games].
+### Testing
 
----
+Run the test suite:
+```bash
+npm test
+```
 
-## Evaluation Criteria
+Generate test traffic:
+```bash
+./test-traffic.sh
+```
 
-1. **CI/CD Pipeline**
-    - Robustness of the pipeline.
-    - Clear error handling and rollback mechanisms.
+## Configuration
 
-2. **Observability**
-    - Completeness and usability of the monitoring and alerting setup.
-    - Clarity and functionality of dashboards.
+### Environment Variables
+```
+NODE_ENV=production
+DEPLOYMENT_COLOR=[blue|green]
+```
 
-3. **Infrastructure Setup**
-    - Simplicity and effectiveness of the containerization and deployment process.
-    - (Optional) Use of orchestration tools like Kubernetes.
+### Prometheus Configuration
+Target metrics endpoints:
+- Blue deployment (app-blue:3000)
+- Green deployment (app-green:3000)
+- Prometheus itself
 
-4. **Documentation**
-    - Clarity and completeness of the README file.
-    - Explanation of design decisions and trade-offs.
+### Nginx Configuration
+Load balancer settings:
+- Health check endpoints
+- Proxy configuration
+- Zero-downtime switching
 
-5. **Problem-Solving**
-    - How challenges were addressed.
-    - Demonstration of creativity and efficiency in solutions.
+## Troubleshooting
 
----
+### Common Issues
 
-## Extra Credit
+1. Docker DNS Issues
+```bash
+# Check Docker DNS configuration
+cat /etc/docker/daemon.json
 
-*These are not required but can showcase additional skills:*
+# Verify DNS resolution
+docker run busybox nslookup google.com
+```
 
-- **Advanced Deployment**
-    - Implement blue/green or canary deployments.
+2. Service Health Check
+```bash
+# Check service status
+docker-compose -f docker-compose.blue-green.yml ps
 
-- **Tracing**
-    - Add distributed tracing to the application.
+# View service logs
+docker-compose -f docker-compose.blue-green.yml logs [service-name]
+```
 
-- **Log Aggregation**
-    - Integrate a log aggregation solution (e.g., Loki / LGTM Stack).
+3. Deployment Issues
+```bash
+# Verify deployments
+curl http://localhost:3002/health
+curl http://localhost:3003/health
 
-- **Pipeline Observability**
-    - Add monitoring and alerting to the CI/CD pipeline.
+# Check container logs
+docker logs devtakehome_app-blue_1
+docker logs devtakehome_app-green_1
+```
+
+4. Monitoring
+```bash
+# Check Prometheus targets
+curl http://localhost:9090/api/v1/targets
+
+# Verify metrics endpoint
+curl http://localhost:3002/metrics
+```
+
+5. Logging
+```bash
+# Check Loki logs
+curl -X GET "http://localhost:3100/loki/api/v1/query"
+
+# Verify log collection
+docker-compose -f docker-compose.blue-green.yml logs loki
+```
+
+## Architectural Decisions
+
+### 1. Blue/Green Deployment Strategy
+**Decision**: Implemented blue/green deployment using Docker Compose and Nginx as a load balancer.
+**Rationale**:
+- Zero-downtime deployments
+- Easy rollback capability
+- Simple health check verification
+- No need for complex orchestration tools for this scale
+
+**Trade-offs**:
+- Requires double the resources as both versions run simultaneously
+- More complex initial setup compared to simple deployments
+- Higher memory usage due to running multiple instances
+
+### 2. Monitoring Stack
+**Decision**: Used Prometheus, Grafana, Jaeger, and Loki for comprehensive monitoring.
+**Rationale**:
+- Prometheus: Industry standard for metrics collection
+- Grafana: Rich visualization capabilities
+- Jaeger: Distributed tracing for performance analysis
+- Loki: Log aggregation that integrates well with Grafana
+
+**Trade-offs**:
+- Higher resource usage with multiple monitoring tools
+- More complex configuration needed
+- Learning curve for team members
+
+### 3. Container Strategy
+**Decision**: Used multi-stage Docker builds and alpine-based images.
+**Rationale**:
+- Smaller final image size
+- Better security with minimal dependencies
+- Faster deployment times
+
+**Trade-offs**:
+- More complex Dockerfile
+- Potential debugging challenges in minimal images
+- Need to explicitly add debugging tools when needed
+
+
+## Assumptions Made
+
+1. Scale Requirements:
+- Assumed moderate traffic load
+- Single region deployment
+- No specific high availability requirements
+
+2. Security Requirements:
+- Basic authentication for Grafana
+- No specific security compliance needs
+- Internal network for monitoring tools
+
+3. Operational Requirements:
+- Team familiarity with Docker
+- No specific backup requirements
+- Manual intervention acceptable for rollbacks
