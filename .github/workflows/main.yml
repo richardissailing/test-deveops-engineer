@@ -1,0 +1,98 @@
+name: CI/CD Pipeline
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Blue image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/blue:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/blue:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build and push Green image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/green:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/green:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy new version
+        run: |
+          echo "Starting deployment of version ${{ github.sha }}"
+          # Perform health check on current deployment
+          if ! curl --fail -s http://localhost:3002/health; then
+            echo "Current deployment is not healthy, aborting"
+            exit 1
+          fi
+          # Deploy new version to inactive color
+          ./scripts/switch-deployment.sh green
+          # Wait for new deployment to be ready
+          sleep 10
+          # Verify new deployment
+          if ! curl --fail -s http://localhost:3003/health; then
+            echo "New deployment failed health check, rolling back"
+            ./scripts/switch-deployment.sh blue
+            exit 1
+          fi
+      - name: Verify deployment
+        run: |
+          curl -s http://localhost/health
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, rolling back to previous version"
+          ./scripts/switch-deployment.sh blue
