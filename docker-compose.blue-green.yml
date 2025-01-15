@@ -44,11 +44,14 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_BASIC_ENABLED=true
     volumes:
       - type: bind
         source: ./grafana/provisioning
         target: /etc/grafana/provisioning
         read_only: true
+      - grafana-data:/var/lib/grafana
 
   loki:
     image: grafana/loki:2.9.2
@@ -65,3 +68,7 @@ services:
 networks:
   default:
     driver: bridge
+
+volumes:
+  grafana-data:
+  prometheus-data:
