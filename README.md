@@ -159,6 +159,25 @@ Load balancer settings:
 - Proxy configuration
 - Zero-downtime switching
 
+## Testing the Setup
+
+### Generate test traffic:
+
+```
+# Simple traffic generator
+while true; do
+  curl localhost:3002/
+  curl localhost:3003/
+  sleep 1
+done
+```
+
+View results in:
+
+* Grafana dashboards (metrics)
+* Jaeger UI (traces)
+* Loki (logs)
+
 ## Architectural Decisions
 
 ### 1. Blue/Green Deployment Strategy

@@ -10,10 +10,19 @@ datasources:
     type: loki
     access: proxy
     url: http://loki:3100
+    uid: loki
     jsonData:
       maxLines: 1000
+      derivedFields:
+        - datasourceUid: jaeger
+          matcherRegex: "traceID=(\\w+)"
+          name: TraceID
+          url: "/explore?orgId=1&left=%5B%22now-1h%22,%22now%22,%22jaeger%22,%7B%22query%22:%22$${__value.raw}%22%7D%5D"
   - name: Jaeger
     type: jaeger
+    uid: jaeger
     access: proxy
     url: http://jaeger:16686
-    uid: jaeger
+    jsonData:
+      nodeGraph:
+        enabled: true

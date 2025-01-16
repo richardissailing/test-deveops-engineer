@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   app-blue:
     build: .
@@ -8,6 +7,10 @@ services:
     environment:
       - NODE_ENV=production
       - DEPLOYMENT_COLOR=blue
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    depends_on:
+      - jaeger
 
   app-green:
     build: .
@@ -16,6 +19,10 @@ services:
     environment:
       - NODE_ENV=production
       - DEPLOYMENT_COLOR=green
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    depends_on:
+      - jaeger
 
   nginx:
     image: nginx:alpine
@@ -23,9 +30,15 @@ services:
       - "80:80"
     volumes:
       - type: bind
+        source: ./nginx/conf
+        target: /etc/nginx/conf.d
+      - type: bind
         source: ./nginx/nginx.conf
         target: /etc/nginx/nginx.conf
         read_only: true
+    depends_on:
+      - app-blue
+      - app-green
 
   prometheus:
     image: prom/prometheus:latest
@@ -36,6 +49,16 @@ services:
         source: ./prometheus
         target: /etc/prometheus
         read_only: true
+      - prometheus-data:/prometheus
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    volumes:
+      - ./promtail/promtail-config.yaml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
 
   grafana:
     image: grafana/grafana:latest
@@ -52,18 +75,35 @@ services:
         target: /etc/grafana/provisioning
         read_only: true
       - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
 
   loki:
     image: grafana/loki:2.9.2
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
 
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
       - "16686:16686"
+      - "14250:14250"
       - "14268:14268"
+      - "14269:14269"
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    volumes:
+      - jaeger-data:/badger
 
 networks:
   default:
@@ -72,3 +112,5 @@ networks:
 volumes:
   grafana-data:
   prometheus-data:
+  loki-data:
+  jaeger-data:
